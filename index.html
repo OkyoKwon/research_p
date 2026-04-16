@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>크립토 결제 서비스 플로우 시각화</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-card: #ffffff;
+  --text: #1a1a2e;
+  --text-secondary: #6c757d;
+  --border: #e0e0e0;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+  --basepay: #0052FF;
+  --binancepay: #F0B90B;
+  --coinbase: #1652F0;
+  --stripe: #635BFF;
+  --bitpay: #1A3B6B;
+  --tab-active-bg: var(--bg);
+  --radius: 10px;
+  --transition: 0.25s ease;
+}
+[data-theme="dark"] {
+  --bg: #0f0f1a;
+  --bg-secondary: #1a1a2e;
+  --bg-card: #1e1e32;
+  --text: #e8e8f0;
+  --text-secondary: #9a9ab0;
+  --border: #2a2a40;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.4);
+  --tab-active-bg: var(--bg-card);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  transition: background var(--transition), color var(--transition);
+}
+.header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--basepay), var(--stripe));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header-actions { display: flex; gap: 12px; align-items: center; }
+.theme-toggle {
+  width: 44px; height: 24px;
+  border-radius: 12px;
+  background: var(--border);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--transition);
+}
+.theme-toggle::after {
+  content: '';
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--text);
+  position: absolute;
+  top: 3px; left: 3px;
+  transition: transform var(--transition);
+}
+[data-theme="dark"] .theme-toggle::after { transform: translateX(20px); }
+.print-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all var(--transition);
+}
+.print-btn:hover { background: var(--bg-secondary); }
+
+/* Main Tabs */
+.main-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--border);
+  overflow-x: auto;
+}
+.main-tab {
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all var(--transition);
+  white-space: nowrap;
+  position: relative;
+}
+.main-tab:hover { color: var(--text); }
+.main-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--service-color, var(--basepay));
+}
+.main-tab .tab-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* Sub Tabs */
+.sub-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 24px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.sub-tab {
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.sub-tab:hover { border-color: var(--text-secondary); }
+.sub-tab.active {
+  background: var(--service-color, var(--basepay));
+  color: #fff;
+  border-color: transparent;
+}
+
+/* Content */
+.content { padding: 24px; max-width: 1280px; margin: 0 auto; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Scenario Card */
+.scenario-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: box-shadow var(--transition);
+}
+.scenario-card:hover { box-shadow: var(--shadow-lg); }
+.scenario-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.scenario-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.scenario-header h3 .svc-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: 700;
+}
+.scenario-toggle {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform var(--transition);
+}
+.scenario-toggle.open { transform: rotate(180deg); }
+.scenario-body { padding: 20px; display: none; }
+.scenario-body.open { display: block; }
+.scenario-annotations {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.annotation-chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.mermaid-container {
+  overflow-x: auto;
+  padding: 8px 0;
+}
+.mermaid {
+  display: flex;
+  justify-content: center;
+}
+.mermaid svg { max-width: 100%; height: auto; }
+
+/* Comparison Tab */
+.comparison-section { margin-bottom: 32px; }
+.comparison-section h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+}
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.comparison-table th {
+  background: var(--bg-secondary);
+  padding: 12px 14px;
+  text-align: center;
+  font-weight: 700;
+  border-bottom: 2px solid var(--border);
+  font-size: 13px;
+}
+.comparison-table td {
+  padding: 10px 14px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.comparison-table tr:hover td { background: var(--bg-secondary); }
+.comparison-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+  background: var(--bg-secondary);
+  min-width: 140px;
+}
+.cell-highlight { font-weight: 700; }
+.cell-warning { opacity: 0.7; }
+.check { color: #4CAF50; font-weight: 700; }
+.cross { color: #F44336; font-weight: 700; }
+.svc-col-header { font-size: 12px; }
+
+/* Feature Grid */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  border-top: 4px solid;
+}
+.feature-card h3 { font-size: 16px; margin-bottom: 12px; }
+.feature-card .arch-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.metric-row:last-child { border-bottom: none; }
+.metric-label { color: var(--text-secondary); }
+.metric-value { font-weight: 600; }
+
+/* Strengths/Weaknesses */
+.sw-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+.sw-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.sw-card h4 { font-size: 14px; margin-bottom: 10px; border-bottom: 2px solid; padding-bottom: 6px; }
+.sw-list { list-style: none; }
+.sw-list li { font-size: 12px; padding: 3px 0; padding-left: 16px; position: relative; }
+.sw-list li::before { content: ''; position: absolute; left: 0; top: 9px; width: 6px; height: 6px; border-radius: 50%; }
+.sw-list.strengths li::before { background: #4CAF50; }
+.sw-list.weaknesses li::before { background: #F44336; }
+
+/* Print */
+@media print {
+  .header, .main-tabs, .sub-tabs, .theme-toggle, .print-btn { display: none !important; }
+  .tab-panel { display: block !important; }
+  .scenario-body { display: block !important; }
+  .scenario-card { break-inside: avoid; page-break-inside: avoid; }
+  body { background: #fff; color: #000; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .feature-grid, .sw-grid { grid-template-columns: 1fr; }
+  .main-tab { padding: 10px 14px; font-size: 13px; }
+  .content { padding: 16px; }
+  .comparison-table { font-size: 11px; }
+}
+@media (max-width: 1024px) {
+  .feature-grid { grid-template-columns: repeat(2, 1fr); }
+  .sw-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="header">
+  <h1>크립토 결제 서비스 플로우 시각화</h1>
+  <div class="header-actions">
+    <button class="print-btn" onclick="window.open('https://docs.google.com/presentation/d/1VVy-AA_UfDEMvWjCThuYHRwHkSe19AUZrqT0UHoE374/edit?slide=id.p1#slide=id.p1','_blank')">심층 리서치 자료 보기</button>
+    <button class="theme-toggle" onclick="toggleTheme()" title="다크/라이트 모드 전환"></button>
+  </div>
+</div>
+
+<nav class="main-tabs" id="mainTabs">
+  <button class="main-tab active" data-tab="basePay" style="--service-color: #0052FF" onclick="switchMainTab('basePay')">
+    <span class="tab-dot" style="background:#0052FF"></span>Base Pay
+  </button>
+  <button class="main-tab" data-tab="binancePay" style="--service-color: #F0B90B" onclick="switchMainTab('binancePay')">
+    <span class="tab-dot" style="background:#F0B90B"></span>Binance Pay
+  </button>
+  <button class="main-tab" data-tab="coinbaseCommerce" style="--service-color: #1652F0" onclick="switchMainTab('coinbaseCommerce')">
+    <span class="tab-dot" style="background:#1652F0"></span>Coinbase Commerce
+  </button>
+  <button class="main-tab" data-tab="stripeCrypto" style="--service-color: #635BFF" onclick="switchMainTab('stripeCrypto')">
+    <span class="tab-dot" style="background:#635BFF"></span>Stripe Crypto
+  </button>
+  <button class="main-tab" data-tab="bitPay" style="--service-color: #1A3B6B" onclick="switchMainTab('bitPay')">
+    <span class="tab-dot" style="background:#1A3B6B"></span>BitPay
+  </button>
+  <button class="main-tab" data-tab="comparison" style="--service-color: #455A64" onclick="switchMainTab('comparison')">
+    <span class="tab-dot" style="background:#455A64"></span>서비스 비교
+  </button>
+</nav>
+
+<div class="content" id="content"></div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────
+const SERVICES = {
+  basePay: { label: 'Base Pay', color: '#0052FF', badgeColor: '#0052FF' },
+  binancePay: { label: 'Binance Pay', color: '#F0B90B', badgeColor: '#C49800' },
+  coinbaseCommerce: { label: 'Coinbase Commerce', color: '#1652F0', badgeColor: '#1652F0' },
+  stripeCrypto: { label: 'Stripe Crypto', color: '#635BFF', badgeColor: '#635BFF' },
+  bitPay: { label: 'BitPay', color: '#1A3B6B', badgeColor: '#1A3B6B' }
+};
+
+const SCENARIOS = [
+  // ─── BASE PAY ─── 결제 (3)
+  {
+    id: 'bp-pay-charge', service: 'basePay', category: '결제',
+    title: '즉시 결제 (Charge / Direct Transfer)',
+    annotations: ['수수료: 1% (머천트 부담)', 'DEX 슬리피지: 변동 (구매자 부담)', '가스비: ~$0.01 (Base)', '전체 소요: ~2초 (Base)'],
+    mermaid: `graph TD
+    n1((결제 시작))-->n2["머천트: 결제 요청 생성<br/>(API / Shopify 플러그인)"]
+    n2-->n3["오퍼레이터: TransferIntent 생성<br/>(금액, 머천트주소, 만료, 수수료)"]
+    n3-->n4["구매자: 지갑 연결 + 결제 승인"]
+    n4-->n5{"결제 토큰 =<br/>정산 토큰?"}
+    n5-->|"아니오 (토큰 불일치)"|n6["컨트랙트: Uniswap V3 자동 스왑<br/>(Permit2/EIP-3009)"]
+    n5-->|"예 (동일 토큰)"|n7["컨트랙트: 토큰 전송 실행<br/>(원자적 처리)"]
+    n6-->n7
+    n7-->n8["컨트랙트: 머천트 지갑 정산<br/>+ 오퍼레이터 수수료 차감"]
+    n8-->n9["Transferred 이벤트 발행<br/>(온체인 기록)"]
+    n9-->n10((결제 완료))`
+  },
+  {
+    id: 'bp-pay-authcapture', service: 'basePay', category: '결제',
+    title: '에스크로 기반 인가-캡처 결제 (Authorize-Capture)',
+    annotations: ['가스비: ~$0.01 (Authorize)', '수수료: 1% (Capture 시 차감)', 'Void 시 수수료 없음', '부분 캡처 지원 (총 캡처 <= maxAmount)', 'authExpiry 이전에만 Capture 가능'],
+    mermaid: `graph TD
+    n1((결제 시작))-->n2["오퍼레이터: PaymentInfo 생성<br/>(maxAmount, authExpiry,<br/>refundExpiry, feeBps)"]
+    n2-->n3["구매자: 결제 승인 (지갑 서명)"]
+    n3-->n4["AUTHORIZE<br/>구매자 자금 → 에스크로 예치"]
+    n4-->n5["authorizationExpiry<br/>타이머 시작"]
+    n5-->|"대기 기간"|n6["머천트: 주문 확인 / 재고 확인<br/>/ 배송 준비"]
+    n6-->n7{"캡처 진행?"}
+    n7-->|"캡처 실행"|n8["CAPTURE<br/>에스크로 → 머천트 전송<br/>(부분 캡처 가능)"]
+    n7-->|"Void (취소)"|n9["VOID<br/>에스크로 → 구매자 전액 반환"]
+    n8-->|"잔여분 처리"|n10["미캡처 잔여분<br/>구매자 자동 반환 / reclaim()"]
+    n8-->n11((결제 완료))
+    n9-->n12((취소 완료))
+    n10-->n11`
+  },
+  {
+    id: 'bp-pay-x402', service: 'basePay', category: '결제',
+    title: 'x402 머신/AI 에이전트 결제',
+    annotations: ['USDC 점유율 98.7%', 'Stripe x402 수수료: 0% (월 1,000건 무료)', '가스비: ~$0.01 (Base), 소요시간: ~2초', 'x402 Foundation: Google, AWS, Visa, Circle, Anthropic'],
+    mermaid: `graph TD
+    n1((리소스 요청))-->n2["클라이언트: HTTP GET<br/>유료 리소스 요청"]
+    n2-->n3["서버: HTTP 402 응답<br/>+ Invoice 반환<br/>(금액, 수신주소, 유효기간, 스킴)"]
+    n3-->n4{"결제 스킴?"}
+    n4-->|"exact/upto"|n5["클라이언트: USDC 결제 서명 생성<br/>(EIP-3009/Permit2/ERC-7710)"]
+    n5-->n6["클라이언트: PAYMENT-SIGNATURE<br/>HTTP 헤더에 서명 포함 재요청"]
+    n6-->n7["Facilitator: 결제 검증<br/>(서명 복원, 잔고 확인,<br/>금액 일치, 시뮬레이션)"]
+    n7-->n8{"검증 성공?"}
+    n8-->|"성공"|n9["블록체인: 온체인 정산<br/>transferWithAuthorization()"]
+    n8-.->|"실패"|n11["서버: HTTP 402<br/>결제 실패 반환"]
+    n9-->n10["서버: HTTP 200<br/>리소스 제공"]
+    n10-->n12((완료))
+    n11-->n12`
+  },
+  // ─── BASE PAY ─── 정산 (3)
+  {
+    id: 'bp-set-charge', service: 'basePay', category: '정산',
+    title: '온체인 즉시 정산 (Charge)',
+    annotations: ['정산 속도: ~2초 (Base)', '정산 수수료: 1% (결제 수수료에 포함)', '정산 통화: USDC(기본), ETH 등'],
+    mermaid: `graph TD
+    n1((결제 실행))-->n2{"결제 토큰 =<br/>정산 토큰?"}
+    n2-->|"아니오"|n3["Uniswap V3 DEX<br/>자동 스왑<br/>(결제토큰 → 정산토큰)"]
+    n2-->|"예"|n4["컨트랙트: 원자적 토큰 전송<br/>머천트 지갑 입금"]
+    n3-->n4
+    n4-->n5["오퍼레이터 수수료 차감<br/>(1%)"]
+    n5-->n6((정산 완료))`
+  },
+  {
+    id: 'bp-set-escrow', service: 'basePay', category: '정산',
+    title: '에스크로 캡처 후 정산',
+    annotations: ['authExpiry 이전에만 Capture 가능', 'Capture 시 즉시 정산', '미캡처분은 reclaim()으로 회수'],
+    mermaid: `graph TD
+    n1((Authorize 완료))-->n2["자금 Token Store에 보관"]
+    n2-->n3["오퍼레이터: 머천트 확인 후<br/>Capture 요청"]
+    n3-->n4{"전액 캡처?<br/>부분 캡처?"}
+    n4-->|"전액"|n5["전액 캡처<br/>에스크로 → 머천트 전송"]
+    n4-->|"부분"|n6["부분 캡처<br/>일부 → 머천트 전송"]
+    n5-->n8((정산 완료))
+    n6-->n7["잔여분 구매자 반환<br/>(reclaim 가능)"]
+    n7-->n8`
+  },
+  {
+    id: 'bp-set-fiat', service: 'basePay', category: '정산',
+    title: '법정화폐 전환 정산',
+    annotations: ['추가 1-5 영업일 소요', 'Shopify 정산 수수료: 0%', '법정화폐 직접 은행 정산 미지원 (구조적 약점)'],
+    mermaid: `graph TD
+    n1((USDC 수령 완료))-->n2{"정산 경로 선택?"}
+    n2-->|"Coinbase Business"|n3["Coinbase Business 경유<br/>(미국/싱가포르 법인)"]
+    n2-->|"Coinbase Exchange"|n4["Coinbase 거래소 경유<br/>(글로벌)"]
+    n2-->|"Shopify"|n5["Shopify 통합 경유<br/>(Stripe 인프라)"]
+    n3-->n6["USDC → fiat off-ramp"]
+    n4-->n7["USDC → USD 전환"]
+    n5-->n8["현지 통화 정산"]
+    n6-->n9["은행 출금"]
+    n7-->n9
+    n8-->n9
+    n9-->n10((법정화폐 정산 완료))`
+  },
+  // ─── BASE PAY ─── 환불 (5)
+  {
+    id: 'bp-ref-void', service: 'basePay', category: '환불',
+    title: '캡처 전 취소 (Void)',
+    annotations: ['수수료: 없음 (Capture 미실행)', '가스비: ~$0.01, 소요: ~2초 (Base)', '결제당 1회만 실행 가능, 부분 Void 불가'],
+    mermaid: `graph TD
+    n1((환불 사유 발생))-->n2["오퍼레이터: void() 함수 호출"]
+    n2-->n3["Token Store에서<br/>전체 승인 금액 반환"]
+    n3-->n4["구매자 지갑 입금"]
+    n3-->n5["상태: Authorized → Voided"]
+    n4-->n6((취소 완료))`
+  },
+  {
+    id: 'bp-ref-postCapture', service: 'basePay', category: '환불',
+    title: '캡처 후 환불 (Refund)',
+    annotations: ['가스비: ~$0.01, 소요: ~2초 (Base)', '플랫폼 수수료(1%) 환불: 오퍼레이터 재량', '환불 토큰 = 원래 결제 토큰', 'refundExpiry 이후 환불 불가'],
+    mermaid: `graph TD
+    n1((환불 사유 발생))-->n2["오퍼레이터: refund() 함수 호출"]
+    n2-->n3["OperatorRefundCollector:<br/>환불 자금 조달<br/>(머천트/오퍼레이터 잔고)"]
+    n3-->n4{"전액?<br/>부분?"}
+    n4-->|"전액"|n5["전액 환불<br/>구매자에게 전송"]
+    n4-->|"부분"|n6["부분 환불<br/>일부 금액 전송"]
+    n5-->n7["구매자 지갑 입금"]
+    n6-->n7
+    n7-->n8((환불 완료))`
+  },
+  {
+    id: 'bp-ref-reclaim', service: 'basePay', category: '환불',
+    title: '소비자 직접 회수 (Reclaim)',
+    annotations: ['가스비: ~$0.01', '중앙 중재 기관 불필요, 온체인 안전장치', 'authExpiry는 PaymentInfo에 사전 정의됨'],
+    mermaid: `graph TD
+    n1((Authorize 완료 상태))-.->|"authExpiry 대기"|n2["authorizationExpiry 경과<br/>(머천트 미캡처)"]
+    n2-->n3["구매자 직접<br/>reclaim() 호출"]
+    n3-->n4["전체 에스크로 금액<br/>구매자에게 반환"]
+    n4-->n5["상태: Authorized → Reclaimed"]
+    n4-->n6((회수 완료))`
+  },
+  {
+    id: 'bp-ref-charge', service: 'basePay', category: '환불',
+    title: 'Charge 완료 후 환불',
+    annotations: ['1세대: 가스비 머천트 부담, 자동화 미지원', '2세대: 가스비 ~$0.01, refundExpiry 이후 환불 불가'],
+    mermaid: `graph TD
+    n1(("Charge 완료<br/>(자금 머천트 전송됨)"))-->n2["환불 사유 발생"]
+    n2-->n3{"프로토콜 버전?"}
+    n3-->|"1세대"|n4["Transfers.sol<br/>머천트가 직접 온체인 전송"]
+    n3-->|"2세대"|n5["AuthCaptureEscrow<br/>refund() 호출<br/>부분 환불 지원"]
+    n4-->n6["구매자 지갑 입금"]
+    n5-->n6
+    n6-->n7((환불 완료))`
+  },
+  {
+    id: 'bp-ref-dispute', service: 'basePay', category: '환불',
+    title: '온체인 결제 분쟁 해결',
+    annotations: ['차지백 메커니즘 없음, 머천트에게 유리', '에스크로가 부분적 보호 제공', '프로토콜 외부 처리, 강제력 제한'],
+    mermaid: `graph TD
+    n1((분쟁 발생))-->n2{"캡처 전?<br/>캡처 후?"}
+    n2-->|"캡처 전"|n3{"Void 가능?"}
+    n2-->|"캡처 후"|n6{"머천트 환불 동의?"}
+    n3-->|"예"|n4["Void 실행<br/>전액 반환"]
+    n3-->|"아니오 (만료 대기)"|n5["authExpiry 경과 후<br/>Reclaim 실행"]
+    n6-->|"동의"|n7["Refund 실행<br/>(OperatorRefundCollector)"]
+    n6-->|"거부"|n8["Coinbase 정책적 중재<br/>(프로토콜 외부)"]
+    n8-.->n9["강제 중재 불가<br/>(차지백 없음)"]
+    n4-->n10((분쟁 종료))
+    n5-->n10
+    n7-->n10
+    n9-.->n10`
+  },
+
+  // ─── BINANCE PAY ─── 결제 (6)
+  {
+    id: 'bn-pay-p2p', service: 'binancePay', category: '결제',
+    title: 'P2P 개인 간 결제',
+    annotations: ['수수료: 0% (무료)', '가스비: 0% (오프체인)', '처리: 즉시', '양측 모두 Binance KYC 필수'],
+    mermaid: `graph TD
+    n1((P2P 송금 시작))-->n2["송금자: Binance 앱 > Pay 메뉴"]
+    n2-->n3["상대방 식별<br/>(Pay ID / 이메일 / 전화 / QR)"]
+    n3-->n4["암호화폐 종류 선택<br/>(300종+ 지원)"]
+    n4-->n5["전송 금액 입력"]
+    n5-->n6["Binance 내부 원장 이체 처리"]
+    n6-->n7["수신자 Funding Wallet 즉시 입금"]
+    n7-->n8((송금 완료))`
+  },
+  {
+    id: 'bn-pay-hosted', service: 'binancePay', category: '결제',
+    title: 'Merchant 결제 (Hosted Checkout)',
+    annotations: ['MDR: 1.0%', 'FX 스프레드: 0.1~0.5%', '가스비: 0% (오프체인)', '처리: 즉시', 'Binance 계정 필수'],
+    mermaid: `graph TD
+    n1((주문 생성))-->n2["가맹점: Create Order V2 API 호출<br/>(POST /v2/order)"]
+    n2-->n3["Binance: 응답 반환<br/>checkoutUrl, qrcodeLink,<br/>deeplink, universalUrl"]
+    n3-->n4["고객: Binance Web Checkout<br/>리다이렉트"]
+    n4-->n5{"결제 방법?"}
+    n5-->|"QR"|n6["QR 코드 스캔"]
+    n5-->|"딥링크"|n7["딥링크 (앱 열기)"]
+    n5-->|"웹"|n8["웹 로그인"]
+    n6-->n9["암호화폐 선택<br/>(50종+ 지원)"]
+    n7-->n9
+    n8-->n9
+    n9-->n10["결제 확인"]
+    n10-->n11["Binance: 결제 처리<br/>+ 자동 환전 (FX Engine)"]
+    n11-->n12["가맹점 Funding Wallet<br/>정산 통화 즉시 입금"]
+    n12-->n13["Webhook 콜백<br/>bizStatus: PAY_SUCCESS"]
+    n13-->n14["고객: returnUrl 리다이렉트"]
+    n14-->n15((결제 완료))`
+  },
+  {
+    id: 'bn-pay-c2b', service: 'binancePay', category: '결제',
+    title: 'C2B Native API 결제',
+    annotations: ['MDR: 1.0%, 가스비: 0%', '개발 난이도 높음, 대규모 이커머스/앱에 적합'],
+    mermaid: `graph TD
+    n1((주문 생성))-->n2["가맹점: Create Order V2 API 호출"]
+    n2-->n3["Binance: qrContent / deeplink 수신"]
+    n3-->n4["가맹점: 자체 UI에서 QR 렌더링<br/>또는 인앱 딥링크 구현"]
+    n4-->n5["고객: Binance 앱에서<br/>결제 수단 선택"]
+    n5-->n6["결제 확인"]
+    n6-->n7["Webhook 결제 결과 수신"]
+    n7-->n8((결제 완료))`
+  },
+  {
+    id: 'bn-pay-links', service: 'binancePay', category: '결제',
+    title: 'Payment Links 결제',
+    annotations: ['MDR: 1.0%', '개발 난이도 제로, 소규모 사업자/프리랜서 적합'],
+    mermaid: `graph TD
+    n1((결제 링크 생성))-->n2["Binance 대시보드에서 링크 생성<br/>(코딩 불필요)"]
+    n2-->n3["가맹점: 링크 공유<br/>(이메일/SNS/웹사이트)"]
+    n3-->n4["고객: 링크 클릭<br/>Binance 결제 플로우 진행"]
+    n4-->n5["결제 완료"]
+    n5-->n6["대시보드에서 확인"]
+    n6-->n7((완료))`
+  },
+  {
+    id: 'bn-pay-qr', service: 'binancePay', category: '결제',
+    title: 'QR 코드 오프라인 결제',
+    annotations: ['MDR: 1.0%, 처리: 즉시', '오프라인 리테일 적합'],
+    mermaid: `graph TD
+    n1((오프라인 결제 시작))-->n2["가맹점: API로 주문 생성<br/>QR 코드 디스플레이 표시"]
+    n2-->n3["고객: Binance 앱 스캐너로<br/>QR 코드 스캔"]
+    n3-->n4["금액/결제 대상 자동 인식"]
+    n4-->n5["암호화폐 선택 후 확인"]
+    n5-->n6["Binance: 즉시 처리"]
+    n6-->n7["Webhook 알림"]
+    n7-->n8((결제 완료))`
+  },
+  {
+    id: 'bn-pay-payout', service: 'binancePay', category: '결제',
+    title: 'Batch Payout (일괄 출금)',
+    annotations: ['Payout 수수료: 0.80% (건당 최대 USD 5)', '2024.12부터 유료 전환', '배치당 최대 500명'],
+    mermaid: `graph TD
+    n1((일괄 출금 시작))-->n2["가맹점: Payout API 호출<br/>또는 CSV 업로드<br/>(최대 500명/배치)"]
+    n2-->n3{"수신자 유형?"}
+    n3-->|"Binance 사용자"|n4["Funding Wallet 즉시 입금"]
+    n3-->|"비 Binance 사용자"|n5["이메일 초대 발송"]
+    n4-->n9((처리 완료))
+    n5-.->|"72시간 대기"|n6{"72시간 내<br/>KYC 완료?"}
+    n6-->|"완료"|n7["수신 확인"]
+    n6-.->|"미완료"|n8["자동 환불<br/>(가맹점에 반환)"]
+    n7-->n9
+    n8-->n9`
+  },
+  // ─── BINANCE PAY ─── 정산 (2)
+  {
+    id: 'bn-set-offchain', service: 'binancePay', category: '정산',
+    title: '오프체인 즉시 정산',
+    annotations: ['정산 속도: 즉시 (T+0)', 'Ledger 성능: 10,000+ TPS, 10ms 이내', 'FX 스프레드: 0.1~0.5% (숨겨진 비용)', '기본 정산 통화: USDT'],
+    mermaid: `graph TD
+    n1((결제 실행))-->n2["Binance 내부 원장:<br/>고객 잔고에서 결제 암호화폐 차감"]
+    n2-->n3["FX Engine<br/>결제 코인 → 정산 통화<br/>(내부 유동성 풀)"]
+    n3-->n4["MDR 1% 차감<br/>(Binance 수수료 계정)"]
+    n4-->n5["가맹점 잔고에<br/>정산 통화 가산"]
+    n5-->n6["Funding Wallet 즉시 입금"]
+    n6-->n7((정산 완료))`
+  },
+  {
+    id: 'bn-set-fiat', service: 'binancePay', category: '정산',
+    title: '법정화폐 전환 및 은행 출금',
+    annotations: ['거래소 환전 수수료: 0.1%', '출금 수수료: ~$5~15', '법정화폐 직접 은행 입금 불가 (최대 구조적 약점)', '수동 처리 필요, 총 실효 수수료: ~1.4~1.5%'],
+    mermaid: `graph TD
+    n1((USDT 수취 완료))-->n2["Binance 거래소에서<br/>수동 환전 (USDT → 법정화폐)"]
+    n2-->n3["법정화폐 출금 신청"]
+    n3-->n4["은행 계좌 입금"]
+    n4-->n5((법정화폐 정산 완료))`
+  },
+  // ─── BINANCE PAY ─── 환불 (4)
+  {
+    id: 'bn-ref-full', service: 'binancePay', category: '환불',
+    title: '전액 환불',
+    annotations: ['처리 속도: 즉시 (오프체인)', '수수료 환불: refundCommission = (refundAmt / orderAmt) * originalCommission', 'API + 대시보드 양방향 지원'],
+    mermaid: `graph TD
+    n1((환불 요청))-->n2{"환불 경로?"}
+    n2-->|"대시보드"|n3["Transaction Tab 확인"]
+    n2-->|"API"|n4["Refund Order API 호출<br/>(POST /order/refund)<br/>prepayId + 금액"]
+    n3-->n5["Binance: 주문 검증<br/>+ 환불 금액 검증<br/>+ 중복 요청 확인"]
+    n4-->n5
+    n5-->n6["가맹점 Funding Wallet<br/>환불금 차감"]
+    n6-->n7["고객 Funding Wallet<br/>환불금 즉시 입금"]
+    n7-->n8["MDR 수수료 비례 환불<br/>refundCommission 계산"]
+    n8-->n9["Webhook: REFUND_SUCCESS"]
+    n9-->n10["주문 상태: FULL_REFUNDED"]
+    n10-->n11((환불 완료))`
+  },
+  {
+    id: 'bn-ref-partial', service: 'binancePay', category: '환불',
+    title: '부분 환불',
+    annotations: ['처리 속도: 즉시', 'duplicateRequest 플래그로 중복 감지', '에러: 400607(횟수 초과), 400608(금액), 400611(잔액 부족)'],
+    mermaid: `graph TD
+    n1((부분 환불 요청))-->n2["Refund Order API 호출<br/>(refundAmount < orderAmount)"]
+    n2-->n3["Binance: 검증 후 부분 환불 처리"]
+    n3-->n4["부분 금액 고객에게 전송"]
+    n4-->n5{"remainingAttempts<br/>= 1?"}
+    n5-->|"아니오 (잔여 횟수 있음)"|n6["추가 부분 환불 가능<br/>(누적 <= 원래 주문)"]
+    n5-->|"예 (마지막 1회)"|n7["다음 환불 시<br/>자동 전액 환불 처리"]
+    n6-->n8((환불 완료))
+    n7-->n8`
+  },
+  {
+    id: 'bn-ref-currency', service: 'binancePay', category: '환불',
+    title: '환불 통화 변환 규칙',
+    annotations: ['핵심: 역환전 미수행, 정산 통화로 환불', 'BTC 결제 → USDT 환불 시 가격 변동 리스크'],
+    mermaid: `graph TD
+    n1((결제 시점))-->n2["고객이 BTC로 결제"]
+    n2-->n3["FX Engine 변환<br/>BTC → USDT"]
+    n3-->n4["가맹점 USDT 수취"]
+    n4-.->|"시간 경과"|n5["환불 시점<br/>(가격 변동 가능)"]
+    n5-->n6["가맹점 정산 통화로 환불<br/>(USDT로 환불, 역환전 없음)"]
+    n6-->n7["고객 USDT 수신<br/>(BTC 가격 상승 시 손실 가능)"]
+    n7-->n8((환불 완료))`
+  },
+  {
+    id: 'bn-ref-dispute', service: 'binancePay', category: '환불',
+    title: '분쟁 해결 절차',
+    annotations: ['Merchant 결제: Binance 중개 가능, 강제력 제한', 'P2P 분쟁 수수료: 4번째부터 부과 (처음 3회 무료)', '차지백 없음, 구매자 보호 프로그램 없음'],
+    mermaid: `graph TD
+    n1((분쟁 발생))-->n2{"거래 유형?"}
+    n2-->|"Merchant 결제"|n3["환불 여부 가맹점 재량"]
+    n2-->|"P2P 거래"|n4["Appeal 개시"]
+    n3-.->n9["차지백 없음<br/>구매자 보호 프로그램 없음"]
+    n4-->n5["10분간 채팅 협의"]
+    n5-.->|"10분"|n6{"합의 달성?"}
+    n6-->|"합의"|n7["합의에 따라 처리"]
+    n6-->|"미합의"|n8["Binance 고객지원 중재<br/>(24~48시간 내 응답)"]
+    n7-->n10((분쟁 종료))
+    n8-->n10
+    n9-.->n10`
+  },
+
+  // ─── COINBASE COMMERCE ─── 결제 (3)
+  {
+    id: 'cc-pay-charge', service: 'coinbaseCommerce', category: '결제',
+    title: '기본 결제 (Coinbase Commerce Charge)',
+    annotations: ['Coinbase 유저 → 무료, 즉시', '외부 지갑 → 1% + 가스비', 'DEX 스왑 포함: ~1.3% + 가스비', '정산: ~200ms~2초 (Base)', '100+ 종 암호화폐 지원'],
+    mermaid: `graph TD
+    n1((결제 시작))-->n2["가맹점: POST /charges<br/>Charge 객체 생성"]
+    n2-->n3["소비자: hosted_url 접속"]
+    n3-->n4["토큰/네트워크 선택"]
+    n4-->n5["소비자: 지갑에서 온체인<br/>트랜잭션 실행"]
+    n5-->n6{"USDC 자동 환전<br/>필요?"}
+    n6-->|"예"|n7["Uniswap V3<br/>DEX 스왑"]
+    n6-->|"아니오 (USDC)"|n8["1% Commerce 수수료<br/>자동 차감"]
+    n7-->n8
+    n8-->n9["가맹점 지갑 정산"]
+    n9-->n10((결제 완료))`
+  },
+  {
+    id: 'cc-pay-authcapture', service: 'coinbaseCommerce', category: '결제',
+    title: 'Commerce Payments Protocol (Authorize-Capture)',
+    annotations: ['수수료: 1%, 가스비: ~$0.01 (Base)', 'Shopify와 공동 개발 (오픈소스)', '실 채택률: $1.2M / 5,700 가맹점', '신뢰 최소화 안전장치'],
+    mermaid: `graph TD
+    n1((결제 시작))-->n2["소비자: 결제 서명"]
+    n2-->n3["AUTHORIZE<br/>자금 에스크로 예치"]
+    n3-->n4["가맹점: 상품 준비 완료"]
+    n4-->n5{"진행?"}
+    n5-->|"Capture"|n6["CAPTURE<br/>에스크로 → 가맹점 이동<br/>(부분 캡처 가능)"]
+    n5-->|"Void"|n7["VOID<br/>소비자 전액 반환"]
+    n5-.->|"authExpiry 경과"|n8["RECLAIM<br/>소비자 직접 회수<br/>(인가 만료 후)"]
+    n6-->n9((완료))
+    n7-->n9
+    n8-->n9`
+  },
+  {
+    id: 'cc-pay-shopify', service: 'coinbaseCommerce', category: '결제',
+    title: 'Shopify 네이티브 통합 결제',
+    annotations: ['수수료: 1% (Base), 외환 수수료 없음', '34개국 550만 가맹점 접근 가능', 'USDC 직접 수령 또는 법정화폐 수령 선택'],
+    mermaid: `graph TD
+    n1((결제 시작))-->n2["Shopify 가맹점:<br/>플러그인 활성화<br/>(15분 내, 별도 게이트웨이 불필요)"]
+    n2-->n3["소비자: USDC로 결제<br/>(Base 네트워크)"]
+    n3-->n4["Base 기반 결제 실행"]
+    n4-->n5["즉시 정산"]
+    n5-->n6((결제 완료))`
+  },
+  // ─── COINBASE COMMERCE ─── 정산 (3)
+  {
+    id: 'cc-set-self', service: 'coinbaseCommerce', category: '정산',
+    title: 'Self-Managed (비수탁형) 정산',
+    annotations: ['Coinbase 유저: 즉시, Base: ~200ms~2초', '법정화폐 인출: 불가', '키 관리: 가맹점 책임, 분실 시 영구 손실', '카운터파티 리스크 없음'],
+    mermaid: `graph TD
+    n1((결제 완료))-->n2{"USDC 자동 스왑?"}
+    n2-->|"예"|n3["DEX 스왑 실행"]
+    n2-->|"아니오"|n5["1% 수수료 차감"]
+    n3-->n5
+    n5-->n4["가맹점 자체 지갑<br/>직접 정산"]
+    n4-->n6((정산 완료))`
+  },
+  {
+    id: 'cc-set-managed', service: 'coinbaseCommerce', category: '정산',
+    title: 'Coinbase-Managed (수탁형) 정산',
+    annotations: ['법정화폐 인출: 1-3 영업일', '환전 스프레드: 1-1.5%', 'Coinbase가 키 관리, Coinbase 리스크 존재'],
+    mermaid: `graph TD
+    n1((결제 완료))-->n2["Coinbase Exchange<br/>계정에 정산"]
+    n2-->n3["1% 수수료 차감"]
+    n3-->n4{"USD 자동 환전?"}
+    n4-->|"예"|n5["USD 자동 환전"]
+    n4-->|"아니오"|n6["크립토 보유 유지"]
+    n5-->n7["ACH/Wire 출금"]
+    n7-->n8((법정화폐 정산 완료))`
+  },
+  {
+    id: 'cc-set-protocol', service: 'coinbaseCommerce', category: '정산',
+    title: 'Commerce Payments Protocol (하이브리드) 정산',
+    annotations: ['캡처 시 즉시 정산, 부분 캡처 지원', '오퍼레이터: 자금 접근 불가, 결제 흐름만 운영'],
+    mermaid: `graph TD
+    n1((자금 에스크로 보관))-->n2["오퍼레이터: 결제 흐름 운영<br/>(자금 접근 불가)"]
+    n2-->n3["가맹점: 캡처 요청"]
+    n3-->n4["에스크로 → 가맹점<br/>즉시 정산"]
+    n4-->n5((정산 완료))`
+  },
+  // ─── COINBASE COMMERCE ─── 환불 (6)
+  {
+    id: 'cc-ref-self', service: 'coinbaseCommerce', category: '환불',
+    title: 'Self-Managed 수동 환불',
+    annotations: ['가스비: 가맹점 부담', '1% Commerce 수수료: 반환 안 됨', 'API 자동 환불 불가, 대시보드 환불 버튼 없음', '업계 최하위 자동화'],
+    mermaid: `graph TD
+    n1((환불 요청))-->n2["소비자: 오프체인 커뮤니케이션<br/>(이메일 등)"]
+    n2-->n3["가맹점: 소비자 수령 주소 확인"]
+    n3-->n4["가맹점: 자체 지갑에서<br/>직접 온체인 전송"]
+    n4-->n5["소비자 지갑 수신"]
+    n5-->n6((환불 완료))`
+  },
+  {
+    id: 'cc-ref-managed', service: 'coinbaseCommerce', category: '환불',
+    title: 'Coinbase-Managed 환불',
+    annotations: ['환전 손실: 결제 시점 대비 환율 차이'],
+    mermaid: `graph TD
+    n1((환불 요청))-->n2["가맹점: Coinbase Exchange에서<br/>환불 처리"]
+    n2-->n3{"법정화폐 환전<br/>되었는가?"}
+    n3-->|"예 (환전됨)"|n4["재환전 필요<br/>(USD → 크립토)"]
+    n3-->|"아니오 (크립토 보유)"|n5["Coinbase 경유<br/>소비자에게 전송"]
+    n4-->n5
+    n5-->n6((환불 완료))`
+  },
+  {
+    id: 'cc-ref-void', service: 'coinbaseCommerce', category: '환불',
+    title: 'Protocol Void (캡처 전 취소)',
+    annotations: ['수수료: 없음, 가스비 외 비용 없음', '캡처 전에만 가능'],
+    mermaid: `graph TD
+    n1((취소 요청))-->n2["오퍼레이터: void() 호출"]
+    n2-->n3["에스크로 → 소비자 지갑<br/>전액 반환"]
+    n3-->n4((Void 완료))`
+  },
+  {
+    id: 'cc-ref-protocol', service: 'coinbaseCommerce', category: '환불',
+    title: 'Protocol Refund (캡처 후 환불)',
+    annotations: ['가스비: 가맹점 부담', 'refundExpiry 이후 환불 불가 (최종 확정)', '환불 유동성: 오퍼레이터 별도 공급 필요'],
+    mermaid: `graph TD
+    n1((환불 요청))-->n2["오퍼레이터: refund() 호출<br/>(refundExpiry 이전)"]
+    n2-->n3["OperatorRefundCollector:<br/>유동성 공급"]
+    n3-->n4{"전액?<br/>부분?"}
+    n4-->|"전액/부분"|n5["전액/부분 환불 실행"]
+    n5-->n6((환불 완료))`
+  },
+  {
+    id: 'cc-ref-reclaim', service: 'coinbaseCommerce', category: '환불',
+    title: 'Protocol Reclaim (소비자 직접 회수)',
+    annotations: ['오퍼레이터 개입 불필요', '신뢰 최소화 안전장치', '소비자의 최후의 보호 수단'],
+    mermaid: `graph TD
+    n1(("authExpiry 경과<br/>미캡처 상태"))-->n2["소비자 직접<br/>reclaim() 호출"]
+    n2-->n3["에스크로 전액<br/>소비자에게 반환"]
+    n3-->n4((회수 완료))`
+  },
+  {
+    id: 'cc-ref-dispute', service: 'coinbaseCommerce', category: '환불',
+    title: '분쟁 해결 절차',
+    annotations: ['차지백 없음', '비가역적 거래', '환불 자동화: 경쟁사 대비 가장 뒤처진 영역'],
+    mermaid: `graph TD
+    n1((분쟁 발생))-->n2["소비자: 가맹점에 직접 연락<br/>환불 협의"]
+    n2-->n3["증빙 제출<br/>(거래ID, 고객정보, 기록)"]
+    n3-->n4{"가맹점 환불 동의?"}
+    n4-->|"동의"|n5["환불 처리"]
+    n4-->|"거부"|n6["Coinbase 공식 불만 접수"]
+    n5-->n9((분쟁 종료))
+    n6-.->|"최대 45 영업일"|n7["45 영업일 이내 응답"]
+    n7-.->n8["차지백 없음<br/>비가역적 거래<br/>소비자 보호 제한"]
+    n8-.->n9`
+  },
+
+  // ─── STRIPE CRYPTO ─── 결제 (6)
+  {
+    id: 'sc-pay-stablecoin', service: 'stripeCrypto', category: '결제',
+    title: 'Stablecoin Payments (가맹점 USDC 수취)',
+    annotations: ['수수료: 1.5% (가스비 포함)', '온체인: ETH ~12초, SOL ~0.4초, Base ~2초', '정산: T+2 영업일 (USD)', '400+ 월렛 지원', '미국 기반 가맹점만 수취 가능'],
+    mermaid: `graph TD
+    n1((결제 시작))-->n2["가맹점: POST /v1/payment_intents<br/>(method: crypto)"]
+    n2-->n3["Stripe: client_secret 반환"]
+    n3-->n4["가맹점: confirmPayment()<br/>crypto.stripe.com 리디렉션"]
+    n4-->n5["고객: 월렛 연결<br/>토큰/체인 선택"]
+    n5-->n6["고객: 트랜잭션 서명"]
+    n6-->n7["블록체인: 온체인 제출<br/>+ 블록 확인 모니터링"]
+    n7-->n8["Bridge: USDC → USD 자동 전환"]
+    n8-->n9["Stripe: payment_intent.succeeded<br/>Webhook 발송"]
+    n9-->n10["가맹점 Stripe 잔고<br/>USD 반영"]
+    n10-->n11((결제 완료))`
+  },
+  {
+    id: 'sc-pay-subscription', service: 'stripeCrypto', category: '결제',
+    title: '구독 결제 (Stablecoin Subscription)',
+    annotations: ['업계 최초 크립토 구독 구현', '블록체인 매 TX 서명 한계 해결', '수수료: 1.5%'],
+    mermaid: `graph TD
+    n1((구독 시작))-->n2["고객: 최초 1회 사전 승인<br/>(pre-approval) 서명"]
+    n2-->n3["스마트 컨트랙트에<br/>반복 인출 권한 부여"]
+    n3-->n4["자동 정기 결제 실행<br/>(재서명 불필요)"]
+    n4-->n5["Stripe 잔고 반영"]
+    n5-->n6((반복 결제 완료))
+    n4-.->|"반복 주기 (매월 등)"|n4`
+  },
+  {
+    id: 'sc-pay-cryptodotcom', service: 'stripeCrypto', category: '결제',
+    title: 'Pay with Crypto (Crypto.com 연동)',
+    annotations: ['사전 환전 불필요', '차지백 없음 (가맹점 유리)', '미국 우선 론칭, 글로벌 확대 예정'],
+    mermaid: `graph TD
+    n1((결제 시작))-->n2["소비자: Crypto.com 앱 내<br/>크립토 잔고로 결제"]
+    n2-->n3["Stripe: 법정화폐 자동 전환"]
+    n3-->n4["가맹점 정산"]
+    n4-->n5((결제 완료))`
+  },
+  {
+    id: 'sc-pay-x402', service: 'stripeCrypto', category: '결제',
+    title: 'x402 머신/AI 에이전트 결제',
+    annotations: ['프로토콜 수수료: 0% 주장', 'Stripe 정산 수수료 별도', '최근 30일: 7,500만+ TX, $2,400만+ 볼륨', 'USDC on Base만 지원'],
+    mermaid: `graph TD
+    n1((유료 리소스 요청))-->n2["서버: HTTP 402<br/>+ 결제 상세 반환"]
+    n2-->n3["클라이언트: 결제 서명 생성"]
+    n3-->n4["클라이언트: PAYMENT-SIGNATURE<br/>헤더 포함 재요청"]
+    n4-->n5["Stripe Facilitator:<br/>deposit address<br/>블록체인 모니터링"]
+    n5-->n6["Stripe 잔고 반영"]
+    n6-->n7["서버: 리소스 제공"]
+    n7-->n8((완료))`
+  },
+  {
+    id: 'sc-pay-mpp', service: 'stripeCrypto', category: '결제',
+    title: 'MPP (Machine Payments Protocol)',
+    annotations: ['수수료: 거의 제로, 지연: 서브-100ms', 'SPTs: Shared Payment Tokens', '결제 수단: 스테이블코인 + 카드 + BTC Lightning', '2026.03 론칭 (Tempo 메인넷)'],
+    mermaid: `graph TD
+    n1((에이전트 결제 요청))-->n2["AI 에이전트:<br/>PaymentIntents API 기반 결제"]
+    n2-->n3["SPTs를 통한<br/>에이전트 간 결제 권한 위임"]
+    n3-->n4["결제 실행"]
+    n4-->n5["배치 정산 처리"]
+    n5-->n6((완료))`
+  },
+  {
+    id: 'sc-pay-onramp', service: 'stripeCrypto', category: '결제',
+    title: 'Crypto Onramp (법정화폐 → 크립토)',
+    annotations: ['수수료: ~5% (카드), ~1.5% (ACH)', 'Onramp만 지원, Offramp 미제공', '지원: USDC(5개 체인), ETH, MATIC, AVAX, XLM', '지원 국가: 미국 + EU'],
+    mermaid: `graph TD
+    n1((크립토 구매 시작))-->n2["DApp: 임베디드 위젯<br/>또는 Stripe-hosted 리디렉션"]
+    n2-->n3["사용자: 결제 수단 선택<br/>(카드, Apple Pay, ACH)"]
+    n3-->n4["Stripe: 내장 KYC<br/>+ Radar 사기 방지"]
+    n4-->n5["법정화폐 → 크립토 전환"]
+    n5-->n6["크립토 사용자 지갑 입금"]
+    n6-->n7((구매 완료))`
+  },
+  // ─── STRIPE CRYPTO ─── 정산 (2)
+  {
+    id: 'sc-set-usd', service: 'stripeCrypto', category: '정산',
+    title: 'USDC → USD 자동 정산 (Full Shielding)',
+    annotations: ['ETH ~12초, SOL ~0.4초, Base ~2초', '정산 수수료: 1.5%에 포함 (별도 없음)', '정산 주기: T+2 영업일', '가맹점 크립토 노출 제로'],
+    mermaid: `graph TD
+    n1((스테이블코인 전송))-->n2["블록체인: 트랜잭션 확인"]
+    n2-->n3["Bridge 엔진:<br/>스테이블코인 → USD 자동 전환<br/>(1:1 페깅, OTC/유동성 풀)"]
+    n3-->n4["가맹점 Stripe 잔고 반영<br/>(카드 결제와 통합 관리)"]
+    n4-->n5["ACH/SEPA 출금<br/>가맹점 은행 입금"]
+    n5-->n6((정산 완료))`
+  },
+  {
+    id: 'sc-set-usdc', service: 'stripeCrypto', category: '정산',
+    title: 'USDC 직접 수취 (Stablecoin Financial Accounts)',
+    annotations: ['지원 국가: 101개국', 'USDC (Circle), USDB (Bridge)', '가상/실물 카드 발급 가능'],
+    mermaid: `graph TD
+    n1((결제 수취))-->n2["USD 전환 없이<br/>스테이블코인 직접 보유"]
+    n2-->n3["다중 통화 잔고 관리"]
+    n3-->n4{"법정화폐 전환?"}
+    n4-->|"전환"|n5["ACH/SEPA 전환<br/>(USD, EUR)"]
+    n4-->|"유지"|n6["스테이블코인 유지"]
+    n5-->n7((정산 완료))
+    n6-->n7`
+  },
+  // ─── STRIPE CRYPTO ─── 환불 (3)
+  {
+    id: 'sc-ref-stablecoin', service: 'stripeCrypto', category: '환불',
+    title: 'Stablecoin Payments 환불',
+    annotations: ['환불 통화: 원래 결제 스테이블코인', '환불 수수료: 별도 명시 없음 (Stripe 부담 추정)', 'Disputes 시스템 미적용, 차지백 없음', 'TX 취소/역전 불가, 잘못된 주소 복구 불가'],
+    mermaid: `graph TD
+    n1((환불 요청))-->n2["가맹점: POST /v1/refunds<br/>(charge=ch_xxx)<br/>또는 대시보드"]
+    n2-->n3["Stripe: 가맹점 잔고에서 차감 (USD)"]
+    n3-->n4["Stripe: USD → 원래 스테이블코인 구매<br/>(역전환)"]
+    n4-->n5["블록체인: 고객 원래 월렛으로<br/>온체인 전송 (새 TX)"]
+    n5-->n6["고객 월렛 수신 확인"]
+    n6-->n7((환불 완료))`
+  },
+  {
+    id: 'sc-ref-crypto', service: 'stripeCrypto', category: '환불',
+    title: 'Pay with Crypto 환불',
+    annotations: ['수수료: 미공개, 차지백 없음', '크립토 가치 수동 추적 필요'],
+    mermaid: `graph TD
+    n1((환불 요청))-->n2["가맹점: 직접 환불 처리"]
+    n2-->n3["고객 원래 월렛으로<br/>스테이블코인 반환"]
+    n3-->n4((환불 완료))`
+  },
+  {
+    id: 'sc-ref-dispute', service: 'stripeCrypto', category: '환불',
+    title: '분쟁 처리',
+    annotations: ['Disputes 시스템 미적용', '차지백 없음', '사기성 분쟁에서 가맹점 자유', '소비자 보호 부재'],
+    mermaid: `graph TD
+    n1((분쟁 발생))-->n2["고객: 가맹점에 직접 연락"]
+    n2-->n3{"가맹점 환불 결정?"}
+    n3-->|"환불 결정"|n4["환불 처리<br/>(POST /v1/refunds)"]
+    n3-.->|"거부"|n5["Disputes 시스템 미적용<br/>차지백 없음<br/>소비자 구제 수단 없음"]
+    n4-->n6((분쟁 종료))
+    n5-.->n6`
+  },
+
+  // ─── BITPAY ─── 결제 (5)
+  {
+    id: 'btp-pay-hosted', service: 'bitPay', category: '결제',
+    title: 'Hosted Checkout 결제',
+    annotations: ['수수료: 1-2% + $0.25/건 (볼륨 연동)', '100+ 종 암호화폐 지원', 'Invoice 유효기간: 15분', 'BTC 확인: ~10분(Confirmed), ~20분(Complete)', 'IPN 서명 없음 — API 재검증 필수'],
+    mermaid: `graph TD
+    n1((결제 시작))-->n2["가맹점: POST /invoices<br/>(price, currency, notificationURL)"]
+    n2-->n3["BitPay: Invoice 생성<br/>(status: new, 15분 유효)"]
+    n3-->n4["고객: Invoice URL 리다이렉트<br/>Hosted Checkout 접속"]
+    n4-->n5["결제 통화 선택<br/>QR 코드 스캔 / 주소 복사"]
+    n5-->n6["고객 지갑: 블록체인<br/>트랜잭션 브로드캐스트"]
+    n6-->n7["BitPay: 결제 감지<br/>status → paid"]
+    n7-->n8["블록체인 1+ 확인<br/>status → confirmed"]
+    n8-->n9["블록체인 2+ 확인<br/>status → complete"]
+    n9-->n10["IPN(Webhook) 전송<br/>(서명 없음)"]
+    n10-->n11["가맹점: GET /invoices/{id}<br/>상태 재검증"]
+    n11-->n12((결제 완료))`
+  },
+  {
+    id: 'btp-pay-api', service: 'bitPay', category: '결제',
+    title: 'API 직접 통합 결제',
+    annotations: ['SDK: Node.js, PHP, Ruby, Python, Java, C#, Go', 'BitAuth(secp256k1) 인증', 'merchant facade 토큰 사용', '자체 결제 UI 구현 가능'],
+    mermaid: `graph TD
+    n1((결제 시작))-->n2["가맹점: merchant facade<br/>토큰으로 API 인증"]
+    n2-->n3["POST /invoices<br/>(price, currency, buyer 정보)"]
+    n3-->n4["BitPay: Invoice 객체 반환<br/>(id, url, addresses,<br/>paymentTotals)"]
+    n4-->n5["가맹점: 자체 UI에<br/>QR/주소 표시 또는<br/>Invoice URL 임베드"]
+    n5-->n6["고객: 암호화폐 결제 전송"]
+    n6-->n7["BitPay: IPN 전송<br/>(notificationURL)"]
+    n7-->n8["가맹점: GET /invoices/{id}<br/>상태 검증"]
+    n8-->n9{"status?"}
+    n9-->|"confirmed/complete"|n10["주문 처리"]
+    n9-->|"expired/invalid"|n11["결제 실패 처리"]
+    n10-->n12((결제 완료))
+    n11-->n12`
+  },
+  {
+    id: 'btp-pay-pos', service: 'bitPay', category: '결제',
+    title: 'POS 오프라인 결제',
+    annotations: ['BitPay Checkout 앱 (iOS/Android)', 'Quick Checkout (웹 기반, 모든 플랜 무료)', '법정화폐 기준 금액 입력', '실시간 결제 확인 표시'],
+    mermaid: `graph TD
+    n1((오프라인 결제 시작))-->n2["직원: BitPay 앱 또는<br/>Quick Checkout 접속"]
+    n2-->n3["법정화폐 기준 금액 입력<br/>(예: $50.00)"]
+    n3-->n4["앱: Invoice 생성<br/>QR 코드 표시"]
+    n4-->n5["고객: 모바일 지갑으로<br/>QR 코드 스캔"]
+    n5-->n6["결제 승인 + 전송"]
+    n6-->n7["BitPay 앱: 실시간 확인<br/>(Paid → Confirmed → Complete)"]
+    n7-->n8["가맹점 대시보드 반영"]
+    n8-->n9((결제 완료))`
+  },
+  {
+    id: 'btp-pay-links', service: 'bitPay', category: '결제',
+    title: 'Payment Links / Buttons',
+    annotations: ['코딩 불필요 (no-code)', 'Payment Buttons: HTML 스니펫 생성', 'Payment Links: 고유 URL 공유', '이메일, SNS, 메신저 배포 가능'],
+    mermaid: `graph TD
+    n1((결제 수단 생성))-->n2{"유형?"}
+    n2-->|"Payment Button"|n3["대시보드: 상품명/가격/통화 설정<br/>HTML 코드 스니펫 생성"]
+    n2-->|"Payment Link"|n4["대시보드: 결제 링크(URL) 생성"]
+    n3-->n5["웹사이트에 코드 삽입"]
+    n4-->n6["이메일/SNS/메신저로 공유"]
+    n5-->n7["고객 클릭 →<br/>Hosted Checkout 이동"]
+    n6-->n7
+    n7-->n8["결제 진행"]
+    n8-->n9((결제 완료))`
+  },
+  {
+    id: 'btp-pay-ecommerce', service: 'bitPay', category: '결제',
+    title: 'E-commerce 플러그인 결제',
+    annotations: ['Shopify, WooCommerce, Magento 등 6+ 플랫폼', '플러그인 설치 → API 토큰 페어링 → 자동 연동', 'IPN으로 주문 상태 자동 업데이트', 'QuickBooks/Xero 회계 소프트웨어 연동'],
+    mermaid: `graph TD
+    n1((통합 설정))-->n2["플러그인 설치/활성화<br/>(Shopify, WooCommerce 등)"]
+    n2-->n3["BitPay API 토큰<br/>생성 및 페어링"]
+    n3-->n4["고객: 'Pay with BitPay' 선택"]
+    n4-->n5["Hosted Checkout 리다이렉트"]
+    n5-->n6["결제 완료"]
+    n6-->n7["IPN으로 주문 상태<br/>자동 업데이트"]
+    n7-->n8["회계 소프트웨어<br/>자동 동기화"]
+    n8-->n9((처리 완료))`
+  },
+
+  // ─── BITPAY ─── 정산 (3)
+  {
+    id: 'btp-set-fiat', service: 'bitPay', category: '정산',
+    title: '법정화폐 정산 (38개국 직접 은행 입금)',
+    annotations: ['38개국 직접 은행 입금 (ACH/SEPA/Wire)', '정산 주기: 매 영업일 (Daily)', '입금 소요: T+1~T+2', '환율 고정: 결제 시점 Lock (15분)', '법정화폐 1개만 설정 가능', '정산 수수료: 거래 수수료에 포함 (별도 없음)'],
+    mermaid: `graph TD
+    n1((결제 완료))-->n2["BitPay: 결제 접수 시점<br/>환율 고정 (Exchange Rate Lock)"]
+    n2-->n3["Invoice status → complete<br/>가맹점 계정 잔액 크레딧"]
+    n3-->n4["매 영업일 합산 정산 실행<br/>(최소 정산 금액 이상)"]
+    n4-->n5["BitPay: 은행 이체 실행<br/>(ACH/SEPA/Wire)"]
+    n5-->n6["1-2 영업일 내<br/>가맹점 은행 입금"]
+    n6-->n7((법정화폐 정산 완료))`
+  },
+  {
+    id: 'btp-set-crypto', service: 'bitPay', category: '정산',
+    title: '암호화폐 정산 (233개국)',
+    annotations: ['233개국 지원 (은행 불필요)', '정산 가능: BTC, BCH, ETH, LTC, DOGE, XRP 등 15종', '정산 주기: 매일 (Daily)', '입금 소요: ~1시간 이내'],
+    mermaid: `graph TD
+    n1((결제 완료))-->n2["Invoice complete<br/>가맹점 계정 크레딧"]
+    n2-->n3["매일 정산 실행"]
+    n3-->n4["지정된 지갑 주소로<br/>암호화폐 전송"]
+    n4-->n5["~1시간 이내<br/>가맹점 지갑 수신"]
+    n5-->n6((암호화폐 정산 완료))`
+  },
+  {
+    id: 'btp-set-split', service: 'bitPay', category: '정산',
+    title: '분할 정산 (법정화폐 + 암호화폐 혼합)',
+    annotations: ['법정화폐 1개 + 암호화폐 최대 5개 혼합', '비율 합계 = 100%', '대시보드에서 비율 조정 가능', '예시: 30% USD + 50% BTC + 20% BCH'],
+    mermaid: `graph TD
+    n1((결제 완료))-->n2["가맹점 설정:<br/>정산 비율 혼합<br/>(예: 30% USD + 50% BTC + 20% BCH)"]
+    n2-->n3{"정산 경로 분기"}
+    n3-->|"법정화폐 비율"|n4["BitPay → 은행 이체<br/>(매 영업일, T+1~T+2)"]
+    n3-->|"암호화폐 비율"|n5["BitPay → 지갑 전송<br/>(매일, ~1시간)"]
+    n4-->n6((정산 완료))
+    n5-->n6`
+  },
+
+  // ─── BITPAY ─── 환불 (4)
+  {
+    id: 'btp-ref-full', service: 'bitPay', category: '환불',
+    title: '전액 환불',
+    annotations: ['공식 소요: 1-2 영업일 (실제 72시간~수주 사례 보고)', '대시보드 + API 양방향 지원', '환불 통화: 고객 결제 시 동일 암호화폐', '네트워크 수수료: 환불금에서 공제'],
+    mermaid: `graph TD
+    n1((환불 요청))-->n2{"환불 경로?"}
+    n2-->|"대시보드"|n3["Payments 탭 > 결제 건 선택<br/>> Full Refund 클릭"]
+    n2-->|"API"|n4["POST /refunds<br/>(invoiceId, amount, currency)"]
+    n3-->n5["BitPay: 환불 접수<br/>1-2 영업일 처리"]
+    n4-->n5
+    n5-->n6["고객에게 환불 안내 이메일<br/>(환불 수령 링크 포함)"]
+    n6-->n7["고객: 링크 클릭 →<br/>환불 수령 페이지 접속"]
+    n7-->n8["고객: 환불 수령<br/>지갑 주소 입력"]
+    n8-->n9["BitPay: 온체인 환불 TX 전송<br/>(네트워크 수수료 공제)"]
+    n9-->n10((환불 완료))`
+  },
+  {
+    id: 'btp-ref-partial', service: 'bitPay', category: '환불',
+    title: '부분 환불',
+    annotations: ['pricing currency(법정화폐) 기준 금액 입력', '환불 시점 환율로 암호화폐 수량 재계산', '네트워크 수수료 공제 (소액 환불 시 비율 상승)', '예: $100 BTC 결제 → $50 부분 환불 시 환불 시점 BTC/USD 환율 적용'],
+    mermaid: `graph TD
+    n1((부분 환불 요청))-->n2["대시보드: Partial Refund 선택<br/>또는 API: POST /refunds"]
+    n2-->n3["법정화폐 기준 금액 입력<br/>(예: $50.00)"]
+    n3-->n4["BitPay: 환불 시점 환율로<br/>암호화폐 수량 재계산"]
+    n4-->n5["고객 이메일 안내 →<br/>지갑 주소 입력"]
+    n5-->n6["BitPay: 부분 환불 TX 전송<br/>(네트워크 수수료 공제)"]
+    n6-->n7((부분 환불 완료))`
+  },
+  {
+    id: 'btp-ref-auto', service: 'bitPay', category: '환불',
+    title: '과다/과소 결제 자동 환불',
+    annotations: ['Underpaid: 요청 미달 → 자동 환불 (수수료 공제)', 'Overpaid: 초과 결제 → 초과분 자동 환불', '네트워크 수수료 공제로 소비자 손실 발생 가능'],
+    mermaid: `graph TD
+    n1((결제 금액 불일치))-->n2{"금액 상태?"}
+    n2-->|"Underpaid<br/>(요청 미달)"|n3["Invoice status → underpaid"]
+    n2-->|"Overpaid<br/>(초과 결제)"|n4["Invoice status → overpaid"]
+    n3-->n5["BitPay: 자동 환불 처리<br/>(네트워크 수수료 공제)"]
+    n4-->n6["BitPay: 초과분 자동 환불<br/>(네트워크 수수료 공제)"]
+    n5-->n7["고객 지갑 수신"]
+    n6-->n7
+    n7-->n8((처리 완료))`
+  },
+  {
+    id: 'btp-ref-dispute', service: 'bitPay', category: '환불',
+    title: '분쟁 해결 절차',
+    annotations: ['BitPay는 중재자 아님 (가맹점-고객 직접 협의)', 'BitPay Guarantee: 부정 차지백 보상 프로그램', '온체인 결제: 차지백 구조적 미존재', '기부금: 환불 촉진 미제공'],
+    mermaid: `graph TD
+    n1((분쟁 발생))-->n2["고객: 가맹점에 직접<br/>환불/분쟁 요청"]
+    n2-->n3["가맹점: 내부 검토"]
+    n3-->n4{"환불 승인?"}
+    n4-->|"승인"|n5["BitPay 대시보드/API로<br/>환불 처리"]
+    n4-->|"거부"|n6["고객에게 사유 통보"]
+    n5-->n9((분쟁 종료))
+    n6-->n7{"BitPay Card 관련?"}
+    n7-->|"예"|n8["BitPay Guarantee<br/>부정 차지백 보상 검토"]
+    n7-->|"아니오"|n10["차지백 없음<br/>BitPay 중재 불가"]
+    n8-->n9
+    n10-.->n9`
+  }
+];
+
+// ─── RENDERING ──────────────────────────────────────────────────────────
+let currentMainTab = 'basePay';
+let currentSubTab = '결제';
+let mermaidInitDone = false;
+
+function initMermaid() {
+  const isDark = document.body.getAttribute('data-theme') === 'dark';
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: isDark ? 'dark' : 'default',
+    flowchart: {
+      useMaxWidth: true,
+      htmlLabels: true,
+      curve: 'basis',
+      padding: 12,
+      nodeSpacing: 40,
+      rankSpacing: 50
+    },
+    themeVariables: isDark ? {
+      primaryColor: '#2a2a40',
+      primaryTextColor: '#e8e8f0',
+      primaryBorderColor: '#4a4a60',
+      lineColor: '#6a6a80',
+      secondaryColor: '#1e1e32',
+      tertiaryColor: '#1a1a2e',
+      fontSize: '13px'
+    } : {
+      primaryColor: '#e8f0fe',
+      primaryTextColor: '#1a1a2e',
+      primaryBorderColor: '#90a4ae',
+      lineColor: '#616161',
+      secondaryColor: '#f0f4f8',
+      tertiaryColor: '#fafafa',
+      fontSize: '13px'
+    }
+  });
+  mermaidInitDone = true;
+}
+
+function getServiceScenarios(serviceId, category) {
+  return SCENARIOS.filter(s => s.service === serviceId && s.category === category);
+}
+
+function renderScenarioCard(scenario, index) {
+  const svc = SERVICES[scenario.service];
+  const cardId = `card-${scenario.id}`;
+  const mermaidId = `mermaid-${scenario.id}-${Date.now()}-${index}`;
+  const annotationsHtml = scenario.annotations
+    .map(a => `<span class="annotation-chip">${a}</span>`)
+    .join('');
+
+  return `
+    <div class="scenario-card" id="${cardId}">
+      <div class="scenario-header" onclick="toggleScenario('${cardId}')">
+        <h3>
+          <span class="svc-badge" style="background:${svc.badgeColor}">${svc.label}</span>
+          ${scenario.title}
+        </h3>
+        <button class="scenario-toggle" id="toggle-${cardId}">&#9660;</button>
+      </div>
+      <div class="scenario-body" id="body-${cardId}">
+        <div class="mermaid-container">
+          <div class="mermaid" id="${mermaidId}">${scenario.mermaid}</div>
+        </div>
+        <div class="scenario-annotations">${annotationsHtml}</div>
+      </div>
+    </div>`;
+}
+
+function renderServiceTab(serviceId) {
+  const categories = ['결제', '정산', '환불'];
+  const svc = SERVICES[serviceId];
+  const subTabsHtml = categories.map(c =>
+    `<button class="sub-tab ${c === currentSubTab ? 'active' : ''}" style="--service-color: ${svc.color}" onclick="switchSubTab('${c}')">${c}</button>`
+  ).join('');
+
+  const scenarios = getServiceScenarios(serviceId, currentSubTab);
+  const scenariosHtml = scenarios.map((s, i) => renderScenarioCard(s, i)).join('');
+
+  return `
+    <div class="sub-tabs">${subTabsHtml}</div>
+    <div style="margin-top: 16px;">
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+        ${svc.label} - ${currentSubTab} 시나리오 (${scenarios.length}개) &mdash; 카드를 클릭하여 플로우차트를 확인하세요
+      </p>
+      ${scenariosHtml}
+    </div>`;
+}
+
+function renderComparisonTab() {
+  const subTabs = ['결제 비교', '정산 비교', '환불 비교'];
+  const activeSub = currentSubTab.includes('비교') ? currentSubTab : '결제 비교';
+  const subTabsHtml = subTabs.map(c =>
+    `<button class="sub-tab ${c === activeSub ? 'active' : ''}" style="--service-color: #455A64" onclick="switchSubTab('${c}')">${c}</button>`
+  ).join('');
+
+  let bodyHtml = '';
+  if (activeSub === '결제 비교') {
+    bodyHtml = renderPaymentComparison();
+  } else if (activeSub === '정산 비교') {
+    bodyHtml = renderSettlementComparison();
+  } else {
+    bodyHtml = renderRefundComparison();
+  }
+
+  return `<div class="sub-tabs">${subTabsHtml}</div><div style="margin-top: 16px;">${bodyHtml}</div>`;
+}
+
+function renderPaymentComparison() {
+  return `
+  <div class="comparison-section">
+    <h2>서비스 개요 비교</h2>
+    <div class="feature-grid">
+      <div class="feature-card" style="border-top-color: #0052FF">
+        <h3 style="color: #0052FF">Base Pay</h3>
+        <span class="arch-badge">온체인 (스마트 컨트랙트)</span>
+        <div class="metric-row"><span class="metric-label">기본 수수료</span><span class="metric-value">1%</span></div>
+        <div class="metric-row"><span class="metric-label">가스비</span><span class="metric-value">~$0.01 (구매자)</span></div>
+        <div class="metric-row"><span class="metric-label">처리 속도</span><span class="metric-value">~2초 (Base)</span></div>
+        <div class="metric-row"><span class="metric-label">에스크로</span><span class="metric-value">온체인 지원</span></div>
+        <div class="metric-row"><span class="metric-label">계정 필요</span><span class="metric-value">불필요 (지갑만)</span></div>
+        <div class="metric-row"><span class="metric-label">오픈소스</span><span class="metric-value check">O</span></div>
+        <div class="metric-row"><span class="metric-label">지원 크립토</span><span class="metric-value">Uniswap V3 전체</span></div>
+        <div class="metric-row"><span class="metric-label">통합 난이도</span><span class="metric-value">중간</span></div>
+      </div>
+      <div class="feature-card" style="border-top-color: #F0B90B">
+        <h3 style="color: #C49800">Binance Pay</h3>
+        <span class="arch-badge">오프체인 (내부 원장)</span>
+        <div class="metric-row"><span class="metric-label">기본 수수료</span><span class="metric-value">1%</span></div>
+        <div class="metric-row"><span class="metric-label">가스비</span><span class="metric-value">0%</span></div>
+        <div class="metric-row"><span class="metric-label">처리 속도</span><span class="metric-value">즉시 (10ms)</span></div>
+        <div class="metric-row"><span class="metric-label">에스크로</span><span class="metric-value cross">미지원</span></div>
+        <div class="metric-row"><span class="metric-label">계정 필요</span><span class="metric-value">Binance 계정 필수</span></div>
+        <div class="metric-row"><span class="metric-label">오픈소스</span><span class="metric-value cross">X</span></div>
+        <div class="metric-row"><span class="metric-label">지원 크립토</span><span class="metric-value">300종+</span></div>
+        <div class="metric-row"><span class="metric-label">통합 난이도</span><span class="metric-value">낮음~높음</span></div>
+      </div>
+      <div class="feature-card" style="border-top-color: #1652F0">
+        <h3 style="color: #1652F0">Coinbase Commerce</h3>
+        <span class="arch-badge">온체인 (스마트 컨트랙트)</span>
+        <div class="metric-row"><span class="metric-label">기본 수수료</span><span class="metric-value">1% (CB유저 무료)</span></div>
+        <div class="metric-row"><span class="metric-label">가스비</span><span class="metric-value">~$0.01 (구매자)</span></div>
+        <div class="metric-row"><span class="metric-label">처리 속도</span><span class="metric-value">~200ms~2초</span></div>
+        <div class="metric-row"><span class="metric-label">에스크로</span><span class="metric-value">온체인 지원</span></div>
+        <div class="metric-row"><span class="metric-label">계정 필요</span><span class="metric-value">불필요 (지갑만)</span></div>
+        <div class="metric-row"><span class="metric-label">오픈소스</span><span class="metric-value check">O</span></div>
+        <div class="metric-row"><span class="metric-label">지원 크립토</span><span class="metric-value">100+ 종</span></div>
+        <div class="metric-row"><span class="metric-label">통합 난이도</span><span class="metric-value">중간</span></div>
+      </div>
+      <div class="feature-card" style="border-top-color: #635BFF">
+        <h3 style="color: #635BFF">Stripe Crypto</h3>
+        <span class="arch-badge">온체인 수취 + 오프체인 정산</span>
+        <div class="metric-row"><span class="metric-label">기본 수수료</span><span class="metric-value">1.5%</span></div>
+        <div class="metric-row"><span class="metric-label">가스비</span><span class="metric-value">포함 (Stripe 부담)</span></div>
+        <div class="metric-row"><span class="metric-label">처리 속도</span><span class="metric-value">0.4~12초 (체인별)</span></div>
+        <div class="metric-row"><span class="metric-label">에스크로</span><span class="metric-value">오프체인 (구독만)</span></div>
+        <div class="metric-row"><span class="metric-label">계정 필요</span><span class="metric-value">불필요 (월렛만)</span></div>
+        <div class="metric-row"><span class="metric-label">오픈소스</span><span class="metric-value cross">X</span></div>
+        <div class="metric-row"><span class="metric-label">지원 크립토</span><span class="metric-value">스테이블코인 3종</span></div>
+        <div class="metric-row"><span class="metric-label">통합 난이도</span><span class="metric-value">매우 낮음</span></div>
+      </div>
+      <div class="feature-card" style="border-top-color: #1A3B6B">
+        <h3 style="color: #1A3B6B">BitPay</h3>
+        <span class="arch-badge">오프체인 프로세서 (Hosted Invoice)</span>
+        <div class="metric-row"><span class="metric-label">기본 수수료</span><span class="metric-value">1-2% + $0.25</span></div>
+        <div class="metric-row"><span class="metric-label">가스비</span><span class="metric-value">Network Cost (소비자)</span></div>
+        <div class="metric-row"><span class="metric-label">처리 속도</span><span class="metric-value">10-20분 (BTC) ~ 수초 (XRP)</span></div>
+        <div class="metric-row"><span class="metric-label">에스크로</span><span class="metric-value cross">미지원</span></div>
+        <div class="metric-row"><span class="metric-label">계정 필요</span><span class="metric-value">가맹점 KYC 필수</span></div>
+        <div class="metric-row"><span class="metric-label">오픈소스</span><span class="metric-value">Bitcore (부분)</span></div>
+        <div class="metric-row"><span class="metric-label">지원 크립토</span><span class="metric-value">100+ 종</span></div>
+        <div class="metric-row"><span class="metric-label">통합 난이도</span><span class="metric-value">낮음~중간</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="comparison-section">
+    <h2>결제 시나리오 기능 매트릭스</h2>
+    <table class="comparison-table">
+      <thead><tr>
+        <th>기능</th>
+        <th class="svc-col-header" style="color:#0052FF">Base Pay</th>
+        <th class="svc-col-header" style="color:#C49800">Binance Pay</th>
+        <th class="svc-col-header" style="color:#1652F0">Coinbase Commerce</th>
+        <th class="svc-col-header" style="color:#635BFF">Stripe Crypto</th>
+        <th class="svc-col-header" style="color:#1A3B6B">BitPay</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>즉시 결제 (Charge)</td><td class="check">O</td><td class="check">O</td><td class="check">O</td><td class="check">O</td><td class="check">O</td></tr>
+        <tr><td>Authorize-Capture</td><td class="check">O</td><td class="cross">X</td><td class="check">O</td><td class="cross">X</td><td class="cross">X</td></tr>
+        <tr><td>x402 머신 결제</td><td class="check">O</td><td class="cross">X</td><td class="cross">X</td><td class="check">O</td><td class="cross">X</td></tr>
+        <tr><td>구독 결제</td><td class="cross">X</td><td class="cross">X</td><td class="cross">X</td><td class="check">O</td><td class="cross">X</td></tr>
+        <tr><td>P2P 송금</td><td class="cross">X</td><td class="check">O</td><td class="cross">X</td><td class="cross">X</td><td class="cross">X</td></tr>
+        <tr><td>QR 코드 결제</td><td class="cross">X</td><td class="check">O</td><td class="cross">X</td><td class="cross">X</td><td class="check">O</td></tr>
+        <tr><td>Payment Links</td><td class="cross">X</td><td class="check">O</td><td class="cross">X</td><td class="cross">X</td><td class="check">O</td></tr>
+        <tr><td>Batch Payout</td><td class="cross">X</td><td class="check">O</td><td class="cross">X</td><td class="cross">X</td><td class="check">O (BitPay Send)</td></tr>
+        <tr><td>Crypto Onramp</td><td class="cross">X</td><td class="cross">X</td><td class="cross">X</td><td class="check">O</td><td class="cross">X</td></tr>
+        <tr><td>Shopify 통합</td><td class="check">O</td><td class="cross">X</td><td class="check">O</td><td class="cross">X</td><td class="check">O</td></tr>
+        <tr><td>POS 결제</td><td class="cross">X</td><td class="cross">X</td><td class="cross">X</td><td class="cross">X</td><td class="check">O</td></tr>
+        <tr><td>E-commerce 플러그인</td><td class="cross">X</td><td class="cross">X</td><td class="cross">X</td><td class="cross">X</td><td class="check">O (6+)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  ${renderStrengthsWeaknesses()}`;
+}
+
+function renderSettlementComparison() {
+  return `
+  <div class="comparison-section">
+    <h2>정산 비교 상세</h2>
+    <table class="comparison-table">
+      <thead><tr>
+        <th>항목</th>
+        <th class="svc-col-header" style="color:#0052FF">Base Pay</th>
+        <th class="svc-col-header" style="color:#C49800">Binance Pay</th>
+        <th class="svc-col-header" style="color:#1652F0">Coinbase Commerce</th>
+        <th class="svc-col-header" style="color:#635BFF">Stripe Crypto</th>
+        <th class="svc-col-header" style="color:#1A3B6B">BitPay</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>크립토 정산 속도</td><td>~2초 (온체인)</td><td class="cell-highlight" style="color:#F0B90B">즉시 (오프체인)</td><td>~200ms~2초 (온체인)</td><td>0.4~12초 (체인별)</td><td>~1시간 (Daily 배치)</td></tr>
+        <tr><td>법정화폐 정산 속도</td><td>1-5 영업일 (간접)</td><td class="cell-warning">수동 처리 필요</td><td>1-3 영업일 (Managed)</td><td class="cell-highlight" style="color:#635BFF">T+2 영업일</td><td class="cell-highlight" style="color:#1A3B6B">T+1~T+2 (38개국)</td></tr>
+        <tr><td>법정화폐 직접 정산</td><td>간접 (Coinbase 경유)</td><td class="cell-warning">불가</td><td>가능 (Managed, USD만)</td><td class="cell-highlight" style="color:#635BFF">자동 지원 (USD)</td><td class="cell-highlight" style="color:#1A3B6B">O (38개국, 8개 법정화폐)</td></tr>
+        <tr><td>기본 정산 통화</td><td>USDC</td><td>USDT</td><td>USDC</td><td>USD</td><td>USD (8개 법정화폐 선택)</td></tr>
+        <tr><td>가맹점 크립토 노출</td><td>있음</td><td>있음</td><td>있음 (Self-Managed)</td><td class="cell-highlight" style="color:#635BFF">없음 (완전 차폐)</td><td class="cell-highlight" style="color:#1A3B6B">없음 (환율 고정)</td></tr>
+        <tr><td>총비용 (USD 정산)</td><td>~1% + 간접 비용</td><td>~1.4~1.5%</td><td class="cell-warning">~2~2.5%</td><td>1.5% (all-in)</td><td>~2.7% (FX 스프레드 포함)</td></tr>
+        <tr><td>분할 정산</td><td class="cross">X</td><td class="cross">X</td><td class="cross">X</td><td class="cross">X</td><td class="check">O (법정+크립토 5개)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  ${renderStrengthsWeaknesses()}`;
+}
+
+function renderRefundComparison() {
+  return `
+  <div class="comparison-section">
+    <h2>환불 비교 상세</h2>
+    <table class="comparison-table">
+      <thead><tr>
+        <th>항목</th>
+        <th class="svc-col-header" style="color:#0052FF">Base Pay</th>
+        <th class="svc-col-header" style="color:#C49800">Binance Pay</th>
+        <th class="svc-col-header" style="color:#1652F0">Coinbase Commerce</th>
+        <th class="svc-col-header" style="color:#635BFF">Stripe Crypto</th>
+        <th class="svc-col-header" style="color:#1A3B6B">BitPay</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>환불 방식</td><td>온체인 (스마트 컨트랙트)</td><td>오프체인 (API/대시보드)</td><td>수동 온체인 / Protocol</td><td>온체인 (Stripe 대행)</td><td>BitPay 대행 (온체인)</td></tr>
+        <tr><td>자동 환불</td><td>지원 (2세대)</td><td class="cell-highlight" style="color:#F0B90B">API + 대시보드</td><td class="cell-warning">제한적 (Protocol만)</td><td class="cell-highlight" style="color:#635BFF">API + 대시보드</td><td class="cell-highlight" style="color:#1A3B6B">API + 대시보드 + 자동(과다/과소)</td></tr>
+        <tr><td>부분 환불</td><td>지원 (2세대)</td><td>지원 (다회 반복)</td><td>지원 (Protocol)</td><td>지원</td><td class="check">O</td></tr>
+        <tr><td>Void (캡처 전 취소)</td><td class="check">O (수수료 미발생)</td><td class="cross">X</td><td class="check">O (수수료 미발생)</td><td class="cross">X</td><td class="cross">X</td></tr>
+        <tr><td>Reclaim (자금 회수)</td><td class="check">O (소비자 직접)</td><td class="cross">X</td><td class="check">O (소비자 직접)</td><td class="cross">X</td><td class="cross">X</td></tr>
+        <tr><td>환불 통화</td><td>원래 결제 토큰</td><td class="cell-warning">정산 통화 (USDT)</td><td>USDC (온체인)</td><td>원래 스테이블코인</td><td class="cell-highlight" style="color:#1A3B6B">원래 결제 암호화폐</td></tr>
+        <tr><td>수수료 환불</td><td>오퍼레이터 재량</td><td class="cell-highlight" style="color:#F0B90B">비례 환불됨</td><td class="cell-warning">반환 안 됨</td><td>미공개</td><td class="cell-warning">반환 안 됨</td></tr>
+        <tr><td>환불 속도</td><td>~2초 (Base)</td><td class="cell-highlight" style="color:#F0B90B">즉시 (오프체인)</td><td>블록 확인 시간</td><td>블록 확인 시간</td><td class="cell-warning">1-2 영업일 (실제 72시간+)</td></tr>
+        <tr><td>차지백</td><td>없음</td><td>없음</td><td>없음</td><td>없음</td><td>BitPay Guarantee (Card만)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  ${renderStrengthsWeaknesses()}`;
+}
+
+function renderStrengthsWeaknesses() {
+  return `
+  <div class="comparison-section">
+    <h2>강점 / 약점 요약</h2>
+    <div class="sw-grid">
+      <div class="sw-card">
+        <h4 style="border-color: #0052FF; color: #0052FF">Base Pay</h4>
+        <ul class="sw-list strengths">
+          <li>업계 유일 온체인 Authorize-Capture</li>
+          <li>에스크로 기반 구매자 보호</li>
+          <li>오픈소스 프로토콜</li>
+          <li>낮은 가스비 (~$0.01)</li>
+          <li>x402 머신 결제 지원</li>
+        </ul>
+        <ul class="sw-list weaknesses" style="margin-top: 8px;">
+          <li>법정화폐 직접 정산 미지원</li>
+          <li>Base 네트워크 종속</li>
+          <li>환불 자동화 1세대 미지원</li>
+          <li>실 채택률 낮음</li>
+        </ul>
+      </div>
+      <div class="sw-card">
+        <h4 style="border-color: #F0B90B; color: #C49800">Binance Pay</h4>
+        <ul class="sw-list strengths">
+          <li>가스비 0%, 즉시 정산</li>
+          <li>300종+ 암호화폐 지원</li>
+          <li>4,500만+ 활성 사용자</li>
+          <li>다양한 결제 방식 (P2P, QR, Links)</li>
+          <li>수수료 비례 환불</li>
+        </ul>
+        <ul class="sw-list weaknesses" style="margin-top: 8px;">
+          <li>Binance 계정 필수</li>
+          <li>법정화폐 직접 은행 입금 불가</li>
+          <li>에스크로 미지원</li>
+          <li>차지백/구매자 보호 없음</li>
+          <li>환불 통화 불일치 문제</li>
+        </ul>
+      </div>
+      <div class="sw-card">
+        <h4 style="border-color: #1652F0; color: #1652F0">Coinbase Commerce</h4>
+        <ul class="sw-list strengths">
+          <li>비수탁형 (카운터파티 리스크 없음)</li>
+          <li>Shopify 34개국 통합</li>
+          <li>오픈소스 Protocol</li>
+          <li>Coinbase 유저 무료 결제</li>
+          <li>Reclaim 안전장치</li>
+        </ul>
+        <ul class="sw-list weaknesses" style="margin-top: 8px;">
+          <li>환불 자동화 업계 최하위</li>
+          <li>Self-Managed 키 분실 리스크</li>
+          <li>Protocol 채택률 극히 낮음</li>
+          <li>법정화폐 정산 비용 높음</li>
+        </ul>
+      </div>
+      <div class="sw-card">
+        <h4 style="border-color: #635BFF; color: #635BFF">Stripe Crypto</h4>
+        <ul class="sw-list strengths">
+          <li>가맹점 크립토 노출 제로</li>
+          <li>기존 Stripe 인프라 통합</li>
+          <li>USD 자동 정산 (T+2)</li>
+          <li>구독 결제 업계 최초</li>
+          <li>101개국 지원</li>
+        </ul>
+        <ul class="sw-list weaknesses" style="margin-top: 8px;">
+          <li>수수료 1.5% (최고)</li>
+          <li>미국 가맹점만 수취 가능</li>
+          <li>스테이블코인 3종만 지원</li>
+          <li>Disputes 시스템 미적용</li>
+          <li>오픈소스 아님</li>
+        </ul>
+      </div>
+      <div class="sw-card">
+        <h4 style="border-color: #1A3B6B; color: #1A3B6B">BitPay</h4>
+        <ul class="sw-list strengths">
+          <li>38개국 법정화폐 직접 은행 정산</li>
+          <li>환율 리스크 완전 흡수 (Exchange Rate Lock)</li>
+          <li>100+ 암호화폐, 7개 언어 SDK</li>
+          <li>14년 FinCEN MSB 규제 안정성</li>
+          <li>POS + E-commerce 6+ 플러그인</li>
+          <li>분할 정산 (법정+크립토 혼합)</li>
+        </ul>
+        <ul class="sw-list weaknesses" style="margin-top: 8px;">
+          <li>수수료 2% + $0.25 (업계 최고 수준)</li>
+          <li>FX 스프레드 은닉 수익 (~0.7%)</li>
+          <li>환불 처리 지연 (72시간+ 빈발)</li>
+          <li>카드 프로그램 3년째 중단</li>
+          <li>구독 결제/Lightning 미지원</li>
+          <li>고객 지원: 이메일 전용, 실시간 지원 없음</li>
+        </ul>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── INTERACTION ────────────────────────────────────────────────────────
+function switchMainTab(tabId) {
+  currentMainTab = tabId;
+  if (tabId === 'comparison') {
+    if (!currentSubTab.includes('비교')) currentSubTab = '결제 비교';
+  } else {
+    if (currentSubTab.includes('비교')) currentSubTab = '결제';
+  }
+  document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.main-tab[data-tab="${tabId}"]`).classList.add('active');
+  renderContent();
+}
+
+function switchSubTab(tab) {
+  currentSubTab = tab;
+  renderContent();
+}
+
+function toggleScenario(cardId) {
+  const body = document.getElementById(`body-${cardId}`);
+  const toggle = document.getElementById(`toggle-${cardId}`);
+  const isOpen = body.style.display === 'block';
+  body.style.display = isOpen ? 'none' : 'block';
+  toggle.classList.toggle('open', !isOpen);
+
+  if (!isOpen) {
+    const mermaidEl = body.querySelector('.mermaid');
+    if (mermaidEl && !mermaidEl.getAttribute('data-processed')) {
+      renderMermaidElement(mermaidEl);
+    }
+  }
+}
+
+async function renderMermaidElement(el) {
+  try {
+    const id = el.id || `mermaid-${Date.now()}`;
+    const graphDef = el.textContent.trim();
+    el.textContent = '';
+    const { svg } = await mermaid.render(id + '-svg', graphDef);
+    el.innerHTML = svg;
+    el.setAttribute('data-processed', 'true');
+  } catch (err) {
+    el.innerHTML = `<p style="color: #F44336; font-size: 13px;">다이어그램 렌더링 오류: ${err.message}</p>`;
+  }
+}
+
+function renderContent() {
+  const content = document.getElementById('content');
+  if (currentMainTab === 'comparison') {
+    content.innerHTML = renderComparisonTab();
+  } else {
+    content.innerHTML = renderServiceTab(currentMainTab);
+  }
+}
+
+function toggleTheme() {
+  const body = document.body;
+  const newTheme = body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  body.setAttribute('data-theme', newTheme);
+  initMermaid();
+  // Re-render to reset mermaid diagrams
+  renderContent();
+}
+
+// ─── INIT ───────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initMermaid();
+  renderContent();
+});
+</script>
+</body>
+</html>
